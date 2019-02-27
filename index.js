@@ -4,18 +4,18 @@
 
     //declare variables
     var files = [
+        "Xenograft summary 011119 GYG.json",
         "1.0PDX_ID-NanoStringLabels_JCA.json",
-        "1.0PDX_ID-SN-Affy-IllumID_JCAv2.json",
+        "1.0PDX_ID-SN-Affy-IllumID_JCAv3.json",
         "2.0PDXID_MTDrugRespD7_JCA.json",
         "2.0PDXID_MTDrugRespD14_JCA.json",
         "2.0PDXID_SphDrugRespD7_JCA.json",
+        "IC Survival Data.json",
         "PDX Summary Table CDW.json",
         "radiation response data.json",
+        "STR for PDX database 2.13.19.json",
         "TMZ response data.json",
-        "Xenograft summary 011119 GYG_other.json",
-        "Xenograft summary 011119 GYG.json",
-        "IC Survival Data.json",
-        "STR for PDX database 2.13.19.json"
+        "Xenograft summary 011119 GYG_other.json"
     ];
 
     //declare functions
