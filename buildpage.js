@@ -7,7 +7,9 @@
         $data = $('#data-body');
 
     //declare functions
-    var makeTableBody, summary_information, getSearchTerms, passage_figure, build_sample_select, get_key_params, display_data;
+    var makeTableBody, summary_information, getSearchTerms, passage_figure, build_sample_select, get_key_params, display_data, splitTerm;
+
+    splitTerm = new RegExp('[^A-Za-z0-9]+', 'i');
 
     passage_figure = (function () {
         var createPassageFigure, cleanDate, byDate, onNodeClick;
@@ -630,9 +632,7 @@
     }());
 
     getSearchTerms = (function () {
-        var getWordsFromKeyVal, filterWords, words, splitTerm;
-
-        splitTerm = new RegExp('[^A-Za-z0-9]+', 'i');
+        var getWordsFromKeyVal, filterWords, words;
 
         filterWords = function (el, pos) {
             if (!el || el === "") { // gets rid of undefined
@@ -759,37 +759,40 @@
         actualSearch = function (string) {
             var searchArr, ii, jj, results = [], data_keys = {}, keysOfKeys, maxNum = 0;
             clear_selects();
-            searchArr = string.toLocaleLowerCase().split(/\s+/);
-            for (ii = 0; ii < searchArr.length; ii += 1) {
-                if (searchTerms.hasOwnProperty(searchArr[ii])) {
-                    for (jj = 0; jj < searchTerms[searchArr[ii]].length; jj += 1) {
-                        results.push(searchTerms[searchArr[ii]][jj]);
+            searchArr = string.toLocaleLowerCase().split(splitTerm);
+            for (ii = 0; ii < searchArr.length; ii += 1) { //For each term searched
+                if (searchTerms.hasOwnProperty(searchArr[ii])) { // Is it in the dictionary
+                    for (jj = 0; jj < searchTerms[searchArr[ii]].length; jj += 1) { // For each entry that matches
+                        results.push(searchTerms[searchArr[ii]][jj]);  // save the one
                         data_keys[searchTerms[searchArr[ii]][jj].search_temp_key] = data_keys[searchTerms[searchArr[ii]][jj].search_temp_key] || [
-                            0,
-                            searchTerms[searchArr[ii]][jj]
+                            {}, // start the list of matches
+                            searchTerms[searchArr[ii]][jj] // store the object
                         ];
-                        data_keys[searchTerms[searchArr[ii]][jj].search_temp_key][0] += 1;
-                        maxNum = Math.max(data_keys[searchTerms[searchArr[ii]][jj].search_temp_key][0], maxNum);
+
+                        data_keys[searchTerms[searchArr[ii]][jj].search_temp_key][0][searchArr[ii]] = 1;
+                        maxNum = Math.max(Object.keys(data_keys[searchTerms[searchArr[ii]][jj].search_temp_key][0]).length, maxNum);
                     }
                 }
             }
+
+
 
             //Only grab the ones that match all terms
             if (maxNum > 1) {
                 results = [];
                 keysOfKeys = Object.keys(data_keys);
                 for (ii = 0; ii < keysOfKeys.length; ii += 1) {
-                    if (data_keys[keysOfKeys[ii]][0] >= maxNum) {
+                    if (Object.keys(data_keys[keysOfKeys[ii]][0]).length >= maxNum) {
                         results.push(data_keys[keysOfKeys[ii]][1]);
                     }
                 }
             }
 
-
+            console.log("search results", data_keys, maxNum, results);
             display_data("Search: '" + string + "'", results);
-            console.log(results);
             //return results;
         };
+        //Xeno x1016 X1066
 
         clear_selects = function () {
             var ii;
