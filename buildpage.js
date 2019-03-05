@@ -29,9 +29,10 @@
         };
 
         onNodeClick = function (id, byId, elem) {
-            return function (node) {
+            //return function (node) {
+            return function () {
                 var strOrder = "", i, prior, next, current;
-                console.log(node, id, byId, byId[id]);
+                // console.log(node, id, byId, byId[id]);
 
                 prior = $('<div>', {
                     class: "col-md-4 col-sm-12",
@@ -340,7 +341,7 @@
             // create object for graph
 
 
-            console.log('nums', parents, byKey);
+            // console.log('nums', parents, byKey);
 
             return figureObj;
         };
@@ -357,7 +358,7 @@
             //per id
             ids = Object.keys(id_entry_data);
             var titleElem, randNum;
-            console.log(id_entry_data);
+            // console.log(id_entry_data);
             for (i = 0; i < ids.length; i += 1) {
                 if (id_entry_data[ids[i]].hasOwnProperty("PDX Passage Info")) {
                     randNum = Math.random().toString().replace(/^0\./, "");
@@ -375,7 +376,7 @@
                     $info_elem.appendTo(elem);
 
                     figObj = createPassageFigure(id_entry_data[ids[i]]["PDX Passage Info"], $info_elem);
-                    console.log("*****", figObj);
+                    // console.log("*****", figObj);
                     //throw "testing"
                     loadchart('timelinefig' + randNum, figObj);
                 }
@@ -400,13 +401,68 @@
             return ret;
         };
         return function (data, $elem) {
-            var parts;
+            var parts, $avail, i, j, NSmodel, NScomment, NSclass, NSid, kurl, KinomeID, AffyID, IlluminaID, IlluminaPos;
             parts = getParts(data);
 
             //list summary data
 
+            //list avaliable data
+            $avail = $('<div>', {class: 'row'}).appendTo($elem);
+            if (parts.data_availiable.length) {
+                $('<div>', {class: "col-12 h4", text: "Avaliable Data"}).appendTo($avail);
+                $avail = $('<dl>', {class: "row"}).appendTo($('<div>', {class: 'col-12'}).appendTo($avail));
+                for (i = 0; i < parts.data_availiable.length; i += 1) {
+                    if (parts.data_availiable[i].entry_name.match(/NanoString/i)) {
+                        for (j = 0; j < parts.data_availiable[i].entry_data.length; j += 1) {
+                            if (parts.data_availiable[i].entry_data[j].key.match(/Nsname_model/)) {
+                                NSid = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Model/)) {
+                                NSmodel = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Comment/)) {
+                                NScomment = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Class\ Name/)) {
+                                NSclass = parts.data_availiable[i].entry_data[j].value;
+                            }
+                        }
+                        NSmodel = NSmodel.charAt(0).toUpperCase() + NSmodel.slice(1);
 
-            console.log(parts);
+                        $('<dt class="col-sm-3">NanoString</dt> <dd class="col-sm-9">' + NSmodel + " (" + NScomment + "): " + NSid + " (" + NSclass + ")</dd>").appendTo($avail);
+                    }
+
+                    if (parts.data_availiable[i].entry_name.match(/PDX_ID_OldKinomic/i)) {
+                        KinomeID = "";
+                        AffyID = "";
+                        IlluminaID = "";
+                        IlluminaPos = "";
+                        for (j = 0; j < parts.data_availiable[i].entry_data.length; j += 1) {
+                            if (parts.data_availiable[i].entry_data[j].key.match(/Kinomics_Sample/)) {
+                                KinomeID = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Affy_Sample\ ID/)) {
+                                AffyID = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Illumina_ID/)) {
+                                IlluminaID = parts.data_availiable[i].entry_data[j].value;
+                            } else if (parts.data_availiable[i].entry_data[j].key.match(/Illumina_SentrixPosition/)) {
+                                IlluminaPos = parts.data_availiable[i].entry_data[j].value;
+                            }
+                        }
+
+                        if (KinomeID.length) {
+                            // http://testing.kinomecore.com/?data=*[http://db.kinomecore.com/1.0.0/lvl_1.1.2?find={"sample_data":{"$elemMatch":{"value":"<sample entered here>"}}}]*
+                            kurl = "http://toolbox.kinomecore.com/?data=" + encodeURIComponent('*[http://db.kinomecore.com/1.0.0/lvl_1.1.2?find={"sample_data":{"$elemMatch":{"value":"' + KinomeID + '"}}}]*');
+                            $('<dt class="col-sm-3">Kinomics</dt><dd class="col-sm-9"><a href="' + kurl + '">' + KinomeID + "</a></dd>").appendTo($avail);
+                        }
+                        if (AffyID.length) {
+                            $('<dt class="col-sm-3">Affymetrix:</dt> <dd class="col-sm-9">' + AffyID + "</dd>").appendTo($avail);
+                        }
+                        if (IlluminaID.length) {
+                            $('<dt class="col-sm-3">Illumina:</dt> <dd class="col-sm-9">' + IlluminaID + " (pos: " + IlluminaPos + ")</dd>").appendTo($avail);
+                        }
+                    }
+                }
+            }
+
+
+            console.log('summary information', parts);
 
             return $elem;
         };
@@ -431,7 +487,7 @@
             var $temp, by_ids, i, data_arr;
 
             //Log the data
-            console.log(full_data_arr);
+            console.log('Data Selected', full_data_arr);
 
             //Delete what exists
             $data.empty();
@@ -562,7 +618,7 @@
                 $accBody.append(makeTableBody(entry[i]));
             }
 
-            console.log("in entry builder body", entry);
+            // console.log("in entry builder body", entry);
 
             $ret.append($accBody);
             return $ret;
@@ -788,7 +844,7 @@
                 }
             }
 
-            console.log("search results", data_keys, maxNum, results);
+            // console.log("search results", data_keys, maxNum, results);
             display_data("Search: '" + string + "'", results);
             //return results;
         };
@@ -814,12 +870,12 @@
             arr = that.value.split(';').map(function (x) {
                 return x * 1;
             });
-            console.log(arr);
-            console.log(page_holder);
+            //console.log(arr);
+            // console.log(page_holder);
 
             for (ii = 0; ii < page_holder.length; ii += 1) {
                 if (ii !== arr[0]) {
-                    console.log(ii, arr[0]);
+                    // console.log(ii, arr[0]);
                     page_holder[ii].select[0][0].selected = true;
                 }
             }
@@ -865,7 +921,7 @@
         }
 
         //Build Search
-        console.log(searchTerms);
+        // console.log(searchTerms);
         searchBar = $('<input>', {
             type: 'text',
             style: "height: 100%",
