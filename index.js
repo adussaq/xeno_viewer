@@ -25,7 +25,7 @@
         return fetch(url, {
             mode: "cors",
             credentials: "include",
-            cache: "no-cache"
+            cache: "reload"
         }).then(function (res) {
             return res.json();
         });
