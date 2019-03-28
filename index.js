@@ -22,6 +22,13 @@
     var load_string, fetchJSON;
 
     fetchJSON = function (url) {
+        var rand = Math.random().toString().replace(/0\./);
+        if (url.match(/\?/)) {
+            rand = "&rand=" + rand;
+        } else {
+            rand = "?rand=" + rand;
+        }
+
         return fetch(url, {
             mode: "cors",
             credentials: "include",
