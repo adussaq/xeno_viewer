@@ -56,7 +56,7 @@
                     $pw.append($('<div>', {
                         class: "jumbotron",
                         html: '<h1 class="display-4">Data Unavailable</h1>' +
-                                '<p class="lead">You do not have proper permissions to access this data. If you believe this is in error please contact the administrator, Christopher Willey.</p>'
+                                '<p class="lead">You do not have proper permissions to access this data. If you believe this is in error please contact the administrator, Dr. Christopher Willey.</p>'
                     }));
                     throw new Error("401: User not authenticated for accessing this data.");
                 }
