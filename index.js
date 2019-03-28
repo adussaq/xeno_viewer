@@ -24,7 +24,8 @@
     fetchJSON = function (url) {
         return fetch(url, {
             mode: "cors",
-            credentials: "include"
+            credentials: "include",
+            cache: "no-cache"
         }).then(function (res) {
             return res.json();
         });
@@ -60,7 +61,7 @@
             // prompt to login
             $pw.append($('<div>', {
                 class: "jumbotron",
-                html: '<h1 class="display-4">Login with UAB BlaserID</h1>' +
+                html: '<h1 class="display-4">Login with UAB BlazerID</h1>' +
                         '<p class="lead">You will be redirected to the UAB login when you click below.</p>' +
                         '<p class="lead">' +
                         '<a class="btn btn-primary btn-lg" href="http://db.kinomecore.com/login?redirect=' +
