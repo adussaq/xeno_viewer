@@ -29,7 +29,7 @@
             rand = "?rand=" + rand;
         }
 
-        return fetch(url, {
+        return fetch(url + rand, {
             mode: "cors",
             credentials: "include",
             cache: "reload"
