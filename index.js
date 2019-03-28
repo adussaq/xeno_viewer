@@ -19,17 +19,10 @@
     ];
 
     //declare functions
-    var load_string, fetchJSON;
+    var fetchJSON;
 
     fetchJSON = function (url) {
-        var rand = Math.random().toString().replace(/0\./, "");
-        if (url.match(/\?/)) {
-            rand = "&rand=" + rand;
-        } else {
-            rand = "?rand=" + rand;
-        }
-
-        return fetch(url + rand, {
+        return fetch(url, {
             mode: "cors",
             credentials: "include",
             cache: "reload"
@@ -38,32 +31,35 @@
         });
     };
 
-    load_string = function (url) {
-        return new Promise(function (resolve, reject) {
-            $.ajax({
-                dataType: "text",
-                url: url,
-                success: resolve,
-                error: function (err) {
-                    console.warn(err);
-                    reject("Failed to get: " + url);
-                }
-            });
-        });
-    };
-
     //Get stuff started
     (function () {
-        var $pw = $('#data-request-body');
+        var $pw = $('#data-request-body'), auth1, auth2;
 
         //check if user is already logged in
-        fetchJSON('http://db.kinomecore.com/test').then(function (status) {
-            if (status.logged_in) {
+        fetchJSON('http://db.kinomecore.com/auth/passages/passages').then(function (status) {
+            auth1 = status.read;
+            return fetchJSON('http://db.kinomecore.com/auth/xenoline_annotations/v1');
+        }).then(function (status) {
+            auth2 = status.read;
+            var fetcher = [];
+            if (status.email || (auth1 && auth2)) {
                 //actually get data
-                return Promise.all([
-                    fetchJSON('http://db.kinomecore.com/2.0.0/xenoline_annotations/v1?all=true'),
-                    fetchJSON('http://db.kinomecore.com/2.0.0/passages/passages?all=true')
-                ]);
+                if (auth1) {
+                    fetcher.push(fetchJSON('http://db.kinomecore.com/2.0.0/xenoline_annotations/v1?all=true'));
+                }
+                if (auth2) {
+                    fetcher.push(fetchJSON('http://db.kinomecore.com/2.0.0/passages/passages?all=true'));
+                }
+                if (fetcher.length) {
+                    return Promise.all(fetcher);
+                } else {
+                    $pw.append($('<div>', {
+                        class: "jumbotron",
+                        html: '<h1 class="display-4">Data Unavailable</h1>' +
+                                '<p class="lead">You do not have proper permissions to access this data. If you believe this is in error please contact the administrator, Christopher Willey.</p>'
+                    }));
+                    throw new Error("401: User not authenticated for accessing this data.");
+                }
             }
             // prompt to login
             $pw.append($('<div>', {
@@ -74,7 +70,11 @@
                         '<a class="btn btn-primary btn-lg" href="http://db.kinomecore.com/login?redirect=' +
                         encodeURIComponent(location.href) +
                         '" role="button">Login</a>' +
-                        '</p>'
+                        '</p>' +
+                        '<hr />' +
+                        "<p><i>" +
+                        "Safari users: If you have cross-site tracking disabled this login will not work natively. This is due to login credentials being stored in cross-site enabled cookies. Please disable it or utilized Chrome or Firefox." +
+                        "</i></p>"
             }));
 
             throw new Error("User not logged in.");
