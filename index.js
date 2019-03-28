@@ -22,7 +22,7 @@
     var load_string, fetchJSON;
 
     fetchJSON = function (url) {
-        var rand = Math.random().toString().replace(/0\./);
+        var rand = Math.random().toString().replace(/0\./, "");
         if (url.match(/\?/)) {
             rand = "&rand=" + rand;
         } else {
@@ -61,8 +61,8 @@
             if (status.logged_in) {
                 //actually get data
                 return Promise.all([
-                    fetchJSON('http://db.kinomecore.com/2.0.0/list/xenoline_annotations/v1?all=true'),
-                    fetchJSON('http://db.kinomecore.com/2.0.0/list/passages/passages?all=true')
+                    fetchJSON('http://db.kinomecore.com/2.0.0/xenoline_annotations/v1?all=true'),
+                    fetchJSON('http://db.kinomecore.com/2.0.0/passages/passages?all=true')
                 ]);
             }
             // prompt to login
