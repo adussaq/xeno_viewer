@@ -1,18 +1,41 @@
-/*global $ DATA_DISPLAY jQuery*/
+/*global $ fetch loadchart DATA_DISPLAY jQuery*/
 (function (global) {
     'use strict';
 
     //declare variables
     var $body = $('#form-body'),
-        $data = $('#data-body');
+        $data = $('#data-body'),
+        ID = "_id",
+        DIVIDER = Math.random().toString().replace(/^0\./, "&&");
 
     //declare functions
-    var makeTableBody, summary_information, getSearchTerms, passage_figure, build_sample_select, get_key_params, display_data, splitTerm;
+    var makeTableBody, sendData, summary_information, getSearchTerms, passage_figure, build_sample_select, get_key_params, display_data, splitTerm;
 
     splitTerm = new RegExp('[^A-Za-z0-9]+', 'i');
 
+    sendData = function (url_suffix, type, data) {
+        var url = "http://db.kinomecore.com/2.0.0/" + url_suffix;
+
+        return fetch(url, {
+            method: type,
+            mode: "cors", // no-cors, cors, *same-origin
+            cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+            credentials: "include", // include, *same-origin, omit
+            headers: {
+                "Content-Type": "application/json"
+            },
+            redirect: "follow", // manual, *follow, error
+            referrer: "no-referrer", // no-referrer, *client
+            body: JSON.stringify(data) // body data type must match "Content-Type" header
+        }).then(function (resp) {
+            return resp.json();
+        });
+    };
+
+    //check_perms = function (database, collection)
+
     passage_figure = (function () {
-        var createPassageFigure, cleanDate, byDate, onNodeClick;
+        var edit_entry, edit_modal, create_modal, open_modal, createPassageFigure, cleanDate, byDate, onNodeClick;
 
         cleanDate = function (dateStr) {
             var date = new Date(dateStr.replace(/[^\d\/]+/g, "").replace(/\/+/g, "/").replace(/^10\/210\/09$/, "10/21/09").replace(/8\/24\/812/, "8/24/12"));
@@ -22,10 +45,120 @@
             return date;
         };
 
+        create_modal = function () {
+            var rand = Math.random().toString().replace(/^0\./, ""), title, body, foot, modal;
+            edit_modal = {};
+
+            $('#page-body').append($(
+                '<div class="modal fade" id="modal' + rand + '" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">' +
+                '<div class="modal-dialog modal-lg" role="document">' +
+                '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                '<h5 class="modal-title" id="title' + rand + '"></h5>' +
+                '<button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
+                '<span aria-hidden="true">&times;</span>' +
+                '</button>' +
+                '</div>' +
+                '<div class="modal-body" id="body' + rand + '">' +
+                '</div>' +
+                '<div class="modal-footer" id="foot' + rand + '">' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '</div>'
+            ));
+
+            modal = $('#modal' + rand);
+            title = $('#title' + rand);
+            body = $('#body' + rand);
+            foot = $('#foot' + rand);
+
+            edit_modal.title = function (jq_obj) {
+                title.empty();
+                title.append(jq_obj);
+            };
+            edit_modal.body = function (jq_obj) {
+                body.empty();
+                body.append(jq_obj);
+            };
+            edit_modal.foot = function (jq_obj) {
+                foot.empty();
+                foot.append(jq_obj);
+            };
+            edit_modal.open = function () {
+                modal.modal('show');
+            };
+            edit_modal.close = function () {
+                modal.modal('hide');
+            };
+        };
+
+        //create modal for later use
+        create_modal();
+
         byDate = function (obj) {
             return function (a, b) {
                 return obj[a].date - obj[b].date;
             };
+        };
+
+        open_modal = function (entry) {
+            var edits = {};
+            edit_modal.title(entry.pdx_id + ": " + entry.entry_name);
+            edit_modal.body(makeTableBody(entry, true, "Edit - Submit changes at bottom.", true, function (obj, id) {
+                var idS = id.split(DIVIDER);
+                edits[idS[0]] = edits[idS[0]] || {};
+                edits[idS[0]][idS[1]] = obj;
+            }));
+            edit_modal.foot($('<button>', {
+                class: 'btn btn-primary',
+                text: 'Submit Changes',
+                click: function (evt) {
+                    var keys = Object.keys(edits);
+                    evt.preventDefault();
+
+                    Promise.all(keys.map(function (id) {
+                        var p;
+                        console.log(edits[id]);
+                        p = sendData('/passages/passages/' + id, 'PATCH', edits[id]);
+                        delete edits[id];
+                        return p;
+                    })).then(function (res) {
+                        console.log('response to submit', res);
+                        //update global data object
+
+/*
+
+Here is where updating the UI and global data object will go...
+
+*/
+                        res.map(function (objs) {
+                            // Here we will empty the objects created, and
+                            //   replace them with the appropriate other objects
+                            //$('.' + objs[ID]).empty().append()
+                            return objs;
+                        });
+                        edit_modal.close();
+                    });
+                }
+            }));
+            edit_modal.open();
+            return entry;
+        };
+
+        edit_entry = function (entry) {
+            return $('<div>', {
+                class: 'text-center'
+            }).append($('<button>', {
+                class: 'btn btn-primary',
+                text: 'Edit entry',
+                click: (function (enter) {
+                    return function (evt) {
+                        evt.preventDefault();
+                        open_modal(enter);
+                    };
+                }(entry))
+            }));
         };
 
         onNodeClick = function (id, byId, elem) {
@@ -72,6 +205,7 @@
 
                 // Current
                 if (byId[id].self) {
+                    current.append(edit_entry(byId[id].self));
                     current.append(makeTableBody(byId[id].self, true, 'Circle ' + byId[id].order));
                 } else {
                     current.append(makeTableBody({
@@ -267,7 +401,8 @@
             for (i = 0; i < keys.length; i += 1) {
                 figureObj.nodes.push({
                     name: byKey[keys[i]].id,
-                    date: byKey[keys[i]].date.toGMTString().replace(/^[\s\S]+(\w{3}\s\d{4})[\s\S]+$/i, "$1"),
+                    //date: byKey[keys[i]].date.toGMTString().replace(/^[\s\S]+(\w{3}\s\d{4})[\s\S]+$/i, "$1"),
+                    date: new Date(byKey[keys[i]].date.getFullYear(), byKey[keys[i]].date.getMonth()).toGMTString(),
                     id: byKey[keys[i]].order,
                     from: byKey[keys[i]].nodeColor, //circle color
                     type: byKey[keys[i]].type, //free, fixed, hasAnswer, both, isAnswer
@@ -565,42 +700,6 @@
                     })));
         };
 
-        makeTableBody = function (entry, short, adder) {
-            var j, ret = "";
-
-            entry.pdx_id = entry.pdx_id || "N/A";
-            entry.entry_name = entry.entry_name || "N/A";
-            entry.description = entry.description || "N/A";
-            entry.entry_metadata = entry.entry_metadata || {};
-            entry.entry_metadata.user = entry.entry_metadata.user || "N/A";
-            entry.entry_data = entry.entry_data || [];
-
-            ret += '<p class="h5">' +
-                    entry.pdx_id +
-                    ": " +
-                    entry.entry_name +
-                    '</p><p class="font-weight-light text-muted">' +
-                    entry.description +
-                    '<br />-' +
-                    entry.entry_metadata.user +
-                    '</p><p>' +
-                    '<ul class="list-group">';
-
-            if (short) {
-                ret = '<p class="lead">' + entry.pdx_id + ': ' + adder + '</p>';
-            }
-            for (j = 0; j < entry.entry_data.length; j += 1) {
-                ret += '<li class="list-group-item"><strong>' +
-                        entry.entry_data[j].key +
-                        ":</strong> &emsp; " +
-                        entry.entry_data[j].value +
-                        '</li>';
-            }
-            ret += '</ul></p><hr />';
-
-            return $(ret);
-        };
-
         makeAccBody = function (entry, id) {
             var $ret, $accBody, i;
             $ret = $('<div>', {
@@ -622,6 +721,83 @@
 
             $ret.append($accBody);
             return $ret;
+        };
+
+        makeTableBody = function (entry, short, adder, editable, edit_func) {
+            var j, listItemName, ret = "", $listHold, $listItem, $retObj, callback;
+
+            callback = function (func, id) {
+                return function (evt) {
+                    return func(evt.target.value, id);
+                };
+            };
+
+            entry.pdx_id = entry.pdx_id || "N/A";
+            entry.entry_name = entry.entry_name || "N/A";
+            entry.description = entry.description || "N/A";
+            entry.entry_metadata = entry.entry_metadata || {};
+            entry.entry_metadata.user = entry.entry_metadata.user || "N/A";
+            entry.entry_data = entry.entry_data || [];
+
+            ret += '<p class="h5">' +
+                    entry.pdx_id +
+                    ": " +
+                    entry.entry_name +
+                    '</p><p class="font-weight-light text-muted">' +
+                    entry.description +
+                    '<br />-' +
+                    entry.entry_metadata.user +
+                    '</p><hr />';
+
+            if (short) {
+                ret = '<p><ul class="list-group">' + '<p class="lead">' + entry.pdx_id + ': ' + adder + '</p>' + '</ul></p><hr />';
+            }
+
+            // set up more complex grouping
+            $retObj = $('<div>').append($(ret));
+            $listHold = $('<ul>', {
+                class: "list-group"
+            }).appendTo($retObj);
+
+            for (j = 0; j < entry.entry_data.length; j += 1) {
+                $listItem = $('<li>', {
+                    class: "list-group-item"
+                });
+
+                if (!editable) {
+                    // simple list item
+                    $listItem
+                        .append($('<strong>', {
+                            html: entry.entry_data[j].key
+                        }))
+                        .append($('<span>&emsp;' + entry.entry_data[j].value + '</span>'));
+                } else {
+                    // complex list item
+                    listItemName = entry[ID] + DIVIDER + "entry_data." + j + ".value";
+                    $listItem
+                        .append($('<div>', {
+                            class: "form-group row"
+                        })
+                            .append($('<label>', {
+                                text: entry.entry_data[j].key,
+                                for: listItemName,
+                                class: 'col-sm-3 col-form-label'
+                            }))
+                            .append($('<div>', {
+                                class: "col-sm-9"
+                            })
+                                .append($('<input>', {
+                                    class: 'form-control',
+                                    id: listItemName,
+                                    value: entry.entry_data[j].value
+                                }).on('keyup', callback(edit_func, listItemName)))));
+                }
+
+
+                $listHold.append($listItem);
+            }
+
+            return $retObj;
         };
 
         build_entry_html = function (data_arr) {
@@ -738,6 +914,7 @@
                 words = words.concat(data[i][keys[5]].split(splitTerm));
 
                 //Add in the key value pairs
+                // console.log(data[i], data[i][keys[1]]);
                 words = words.concat(getWordsFromKeyVal(data[i][keys[1]]));
                 words = words.concat(getWordsFromKeyVal(data[i][keys[2]]));
 
@@ -756,6 +933,7 @@
     }());
 
     build_sample_select = function (data) {
+        // console.log(data);
         var dropdowns = get_key_params(data),
             dropdown_headers = Object.keys(dropdowns),
             searchTerms = getSearchTerms(data),

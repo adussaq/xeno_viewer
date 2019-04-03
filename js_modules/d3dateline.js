@@ -90,6 +90,7 @@ function loadchart(div, graph) {
                     lower = d.target;
                     upper = d.source;
                 }
+                
                 c = "M" + upper.x + "," + upper.y +
                     " C" + (upper.x + ctly) + "," + (upper.y - ctlx) +
                     " " + (lower.x + ctly) + "," + (lower.y + ctlx) +
@@ -106,6 +107,7 @@ function loadchart(div, graph) {
                 // if (dx < 5) {
                 //     dr = -10;
                 // }
+                
                 c = "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + 
                 	d.target.x + "," + d.target.y;
             }
@@ -133,9 +135,10 @@ function loadchart(div, graph) {
         var link = svg.selectAll(".link")
             .data(graph.links)
             .enter().append("svg:path")
-            .attr("d", function (d) {
-                return curve(d);
-            })
+            // .attr("d", function (d) {
+            //     // console.log('big link', d);
+            //     // return curve(d);
+            // })
             .attr("class", "link")
             .attr("marker-end", "url(#end)")
             .style("stroke", function(d){
@@ -278,6 +281,7 @@ function loadchart(div, graph) {
                 });
 
             link.attr("d", function (d) {
+                //console.log('link', d);
                 return curve(d);
             });
         }
