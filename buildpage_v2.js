@@ -4,6 +4,7 @@
 
     const $body = $('#form-body');
     const $data_body = $('#data-body');
+    const $alert = $('#page-alerts');
     const ID = "_id";
     let PERMS; // set a global variable for dealing with perms for simplicity
                 // this simply serves to make the UI more friendly.
@@ -15,6 +16,19 @@
     const random = function () {
         //makes a random string of numbers
         return Math.random().toString().replace(/0\./, "");
+    };
+
+    const create_alert = function (err) {
+        $(
+            '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
+            '<strong>Error: </strong> ' + err.message +
+            '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+            '<span aria-hidden="true">&times;</span>' +
+            '</button>' +
+            '</div>'
+        ).appendTo($alert);
+
+        console.error(err);
     };
 
     const wait = function (t) {
@@ -301,7 +315,7 @@
                         .filter((obj) => obj.value !== obj.origin)
                 )
                     .then(wait(750))
-                    .catch(console.error)
+                    .catch(create_alert)
                     .then(modal.hide);
 
             }
