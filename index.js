@@ -17,14 +17,16 @@
 
     //Get stuff started
     (function () {
-        var $pw = $('#data-request-body'), auth1, auth2;
+        var $pw = $('#data-request-body'), auth1, auth2, auth3 = [];
 
         //check if user is already logged in
         fetchJSON('http://db.kinomecore.com/auth/passages/passages').then(function (status) {
             auth1 = status.read;
+            auth3.passages = status;
             return fetchJSON('http://db.kinomecore.com/auth/xenoline_annotations/v1');
         }).then(function (status) {
             auth2 = status.read;
+            auth3.other = status;
             var fetcher = [];
             if (status.email || (auth1 && auth2)) {
                 //actually get data
@@ -69,7 +71,7 @@
                 return a.concat(b);
             });
 
-            global.build_page(dataArr);
+            global.build_page(dataArr, auth3);
         }).catch(function (err) {
             console.warn(err);
         });

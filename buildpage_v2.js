@@ -5,6 +5,8 @@
     const $body = $('#form-body');
     const $data_body = $('#data-body');
     const ID = "_id";
+    let PERMS; // set a global variable for dealing with perms for simplicity
+                // this simply serves to make the UI more friendly.
 
     //functions that have to be delared without const
     let getModal;
@@ -47,6 +49,16 @@
         opts.short_title = opts.short_title || "";
 
         return function (entry) {
+
+            //overwrite edit if need be
+            if (opts.edit) {
+                if (entry.entry_name.match(/PDX\ Passage\ Info/) && !PERMS.passages.write) {
+                    opts.edit = false;
+                }
+                if (!entry.entry_name.match(/PDX\ Passage\ Info/) && !PERMS.other.write) {
+                    opts.edit = false;
+                }
+            }
 
             //verify the entry has all the parts needed or set defaults
             entry.pdx_id = entry.pdx_id || "N/A";
@@ -355,16 +367,19 @@
             //build the data for all three
             entry.self.forEach(function (node) {
                 if (node.id) {
-                    $col2
-                        .append($('<p>', {class: 'text-center'})
-                            .append($('<button>', {
-                                class: 'btn btn-primary',
-                                text: 'Update',
-                                click: function (evt) {
-                                    evt.preventDefault();
-                                    build_modal(node.id, data);
-                                }
-                            })));
+                    if (PERMS.passages.write) {
+                        const $button = $('<button>', {
+                            class: 'btn btn-primary',
+                            text: 'Update',
+                            click: function (evt) {
+                                evt.preventDefault();
+                                build_modal(node.id, data);
+                            }
+                        });
+                        $col2
+                            .append($('<p>', {class: 'text-center'})
+                                .append($button));
+                    }
                     $col2.append(data.build(node.id, createTableBody({
                         short: true,
                         short_title: "Circle: " + node.circle
@@ -713,7 +728,12 @@
             };
         }());
 
-        return function (data_in) {
+        return function (data_in, permissions) {
+            // set global permissions so people who do not have edit rights
+                // do not see the editable interface
+
+            PERMS = permissions;
+
             const data = global.expandData(data_in); //build out the new data object
             const drops = [{ // info to build the drop down menus
                 data: data.list('pdx_id'),
