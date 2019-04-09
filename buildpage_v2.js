@@ -6,6 +6,19 @@
     const $data_body = $('#data-body');
     const $alert = $('#page-alerts');
     const ID = "_id";
+    const SPECIAL_KEYS = {
+        passages: [
+            "Passage Date",
+            "Passage#",
+            "Old Exp#",
+            "New Exp#",
+            "# of Fixed Tissues",
+            "# of OCT Cassettes",
+            "# of Snap-Frozen Vials",
+            "# of Cultured Flasks",
+            "# of Cryo-Frozen Vials"
+        ]
+    };
     let PERMS; // set a global variable for dealing with perms for simplicity
                 // this simply serves to make the UI more friendly.
 
@@ -53,23 +66,122 @@
         };
     };
 
+    const editDropDown = function (drop_down) {
+
+        /*
+        Drop down options:
+            width: (1-12)
+            label: label for the menu
+            data: array of options (objects, {label: "", disabled: "T/F"})
+            key: value attached to all 'values' for the dropdown
+            change: function to be called when data is changed
+        */
+
+        const rand = random();
+
+        let $element = $('<div>', {
+                class: "from-group col-" + drop_down.width
+            }).append($('<label>', {
+                for: 'select-header-' + rand,
+                text: drop_down.label
+            })),
+            $select = $('<select>', {
+                class: "form-control",
+                id: 'select-header-' + rand
+            }),
+            $first = $('<option>', { // basic choice
+                disabled: 'disabled',
+                selected: 'selected',
+                text: "Select One"
+            });
+
+        //add in basic option
+        $select.append($first);
+
+        //add the actual drop down contents
+        drop_down.data.forEach(function (drop) {
+            $select.append($('<option>', {
+                value: JSON.stringify({
+                    key: drop_down.key,
+                    value: drop.label
+                }),
+                text: drop.label,
+                disabled: drop.disabled || false
+            }));
+        });
+
+        // add the select to the returned element
+        $element.append($select);
+
+        //set function for on change
+        $select.change(function (evt) {
+            evt.preventDefault();
+            drop_down.change(JSON.parse(evt.target.value));
+        });
+
+        return $element;
+    };
+
+    const createEntryWithLabel = function (parts) {
+        /*
+            parts:
+            {
+                label: label,
+                value: default value,
+                func: function called when edits take place,
+                id: id for entry,
+                key: key for patching object,
+                rand_wait: random wait function
+            }
+        */
+
+        const rand = random();
+        return $('<div>', {
+            class: "form-group row"
+        })
+            .append($('<label>', {
+                text: parts.label,
+                for: 'list-item-' + rand,
+                class: 'col-sm-3 col-form-label'
+            }))
+            .append($('<div>', {
+                class: "col-sm-9"
+            })
+                .append($('<input>', {
+                    class: 'form-control',
+                    id: 'list-item-' + rand,
+                    value: parts.value
+                }).on('keyup', waitForFinalEvent(function (evt) {
+                    parts.func({
+                        id: parts.id, //entry[ID],
+                        key: parts.key, // 'entry_data.' + partsindex,
+                        value: evt.target.value,
+                        origin: parts.value
+                    });
+                }, 500, parts.rand_wait))));
+    };
+
     const createTableBody = function (opts) {
-        //set default opts
         const rand_wait = random();
+        //set default opts
         opts = opts || {};
         opts.edit = opts.edit || false;
         opts.edit_func = opts.edit_func || console.log;
         opts.short = opts.short || false;
         opts.short_title = opts.short_title || "";
+        opts.special_list = opts.special_list || [];
+        opts.special_list = opts.special_list.map(function (x) {
+            return {label: x};
+        });
 
         return function (entry) {
 
             //overwrite edit if need be
             if (opts.edit) {
-                if (entry.entry_name.match(/PDX\ Passage\ Info/) && !PERMS.passages.write) {
+                if (entry.entry_name.match(/^PDX\ Passage\ Info$/) && !PERMS.passages.write) {
                     opts.edit = false;
                 }
-                if (!entry.entry_name.match(/PDX\ Passage\ Info/) && !PERMS.other.write) {
+                if (!entry.entry_name.match(/^PDX\ Passage\ Info$/) && !PERMS.other.write) {
                     opts.edit = false;
                 }
             }
@@ -111,11 +223,11 @@
 
             //create actual list components
             $listHold.appendTo($holder);
+
             entry.entry_data.forEach(function (enter, index) {
                 const $listItem = $('<li>', {
                     class: "list-group-item"
                 });
-                const rand = random();
 
                 if (!opts.edit) {
                     // simple list item
@@ -127,33 +239,103 @@
                 } else {
                     // complex list item
                     $listItem
-                        .append($('<div>', {
-                            class: "form-group row"
-                        })
-                            .append($('<label>', {
-                                text: enter.key,
-                                for: 'list-item-' + rand,
-                                class: 'col-sm-3 col-form-label'
-                            }))
-                            .append($('<div>', {
-                                class: "col-sm-9"
-                            })
-                                .append($('<input>', {
-                                    class: 'form-control',
-                                    id: 'list-item-' + rand,
-                                    value: enter.value
-                                }).on('keyup', waitForFinalEvent(function (evt) {
-                                    opts.edit_func({
-                                        id: entry[ID],
-                                        key: 'entry_data.' + index,
-                                        value: evt.target.value,
-                                        origin: enter.value
-                                    });
-                                }, 500, rand_wait)))));
+                        .append(createEntryWithLabel({
+                            label: enter.key,
+                            value: enter.value,
+                            func: opts.edit_func,
+                            id: entry[ID],
+                            key: 'entry_data.' + index,
+                            rand_wait: rand_wait
+                        }));
                 }
+
+                opts.special_list.forEach(function (potential, ind) {
+                    if (potential.label === enter.key) {
+                        opts.special_list[ind].disabled = true;
+                    }
+                });
 
                 $listHold.append($listItem);
             });
+
+            //Build the add new key feature
+            if (opts.edit) {
+                let $listItem = $('<li>', {
+                    class: "list-group-item"
+                });
+
+                $listHold.append($listItem);
+
+                $listItem
+                    .append($('<button>', {
+                        class: 'btn btn-primary',
+                        text: 'Add Field',
+                        click: function (evt) {
+                            evt.preventDefault();
+                            let pair = {};
+
+                            let set_pair = function (key, value) {
+                                pair[key] = value;
+                                return pair;
+                            };
+
+                            let $selectaList = $('<li>', {
+                                class: "list-group-item"
+                            });
+
+                            let $selectanEntry = $('<div>', {
+                                class: 'col-12',
+                                style: 'margin-top: 10px;'
+                            });
+
+                            opts.special_list.push({label: 'Other'});
+
+                            $selectaList.append(editDropDown({
+                                width: 12,
+                                label: 'Key',
+                                data: opts.special_list,
+                                key: 'push:entry_data',
+                                change: function (select) {
+                                    if (select.value === 'Other') {
+                                        $selectanEntry.append(createEntryWithLabel({
+                                            label: "New Key",
+                                            value: "",
+                                            func: function (d) {
+                                                d.value = set_pair('key', d.value);
+                                                opts.edit_func(d);
+                                            },
+                                            id: entry[ID],
+                                            key: 'entry_data.' + entry.entry_data.length,
+                                            rand_wait: rand_wait
+                                        })).append(createEntryWithLabel({
+                                            label: "New Value",
+                                            value: "",
+                                            func: function (d) {
+                                                d.value = set_pair('value', d.value);
+                                                opts.edit_func(d);
+                                            },
+                                            id: entry[ID],
+                                            key: 'entry_data.' + entry.entry_data.length,
+                                            rand_wait: rand_wait
+                                        }));
+                                    }
+                                    console.log('on change', {
+                                        id: entry[ID],
+                                        key: select.key,
+                                        value: select.value,
+                                        origin: '',
+                                        temp: select
+                                    });
+                                }
+                            }));
+
+                            $selectaList.append($selectanEntry);
+
+                            $listItem.replaceWith($selectaList);
+                        }
+                    }));
+            }
+
             return $holder;
         };
     };
@@ -299,7 +481,8 @@
             edit_func: function (set_obj) {
                 updates[set_obj.id] = updates[set_obj.id] || {};
                 updates[set_obj.id][set_obj.key] = set_obj;
-            }
+            },
+            special_list: SPECIAL_KEYS.passages
         }), change_handler));
         change_handler.clear();
         modal.foot($('<button>', {
@@ -307,6 +490,8 @@
             text: "Submit",
             click: function (evt) {
                 evt.preventDefault();
+
+                console.log(updates);
                 data.set(
                     Object.keys(updates)
                         .map((key1) => Object.keys(updates[key1])
@@ -317,7 +502,6 @@
                     .then(wait(750))
                     .catch(create_alert)
                     .then(modal.hide);
-
             }
         }));
         modal.show();
@@ -526,7 +710,7 @@
                 //build passage viewer//
                 ////////////////////////
 
-                const passageIDs = by_pdx_id.filter((entry) => entry.entry_name.match(/PDX\ Passage\ Info/i));
+                const passageIDs = by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX\ Passage\ Info$/i));
                 if (passageIDs.length) {
                     console.log(passageIDs);
                     let id = 'figure-' + random();

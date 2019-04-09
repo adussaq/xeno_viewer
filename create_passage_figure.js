@@ -4,7 +4,7 @@
     // var edit_entry, edit_modal, create_modal, open_modal, createPassageFigure, cleanDate, byDate, onNodeClick;
 
     const ID = "_id";
-    const IGNORE_REGEX = /^(none|-)$/i;
+    const IGNORE_REGEX = /^\s*(none|-)\s*$/i;
 
     const clean_string = function (str) {
         //get rid of excess spaces and leading/trailing spaces
@@ -76,14 +76,14 @@
             let exp_id_arr, old_id_arr, exp_id, date, c = 1;
 
             // get 'New Exp#'
-            exp_id_arr = entry.entry_data.filter((obj) => obj.key.match(/\s*New\s*Exp\s*#\s*/i));
+            exp_id_arr = entry.entry_data.filter((obj) => obj.key.match(/^\s*New\s*Exp\s*#\s*$/i));
 
             // get 'Old Exp#'
             old_id_arr = entry.entry_data
-                .filter((obj) => obj.key.match(/\s*Old\s*Exp\s*#\s*/i) && !obj.value.match(IGNORE_REGEX));
+                .filter((obj) => obj.key.match(/^\s*Old\s*Exp\s*#\s*$/i) && !obj.value.match(IGNORE_REGEX));
 
             // get date
-            date = entry.entry_data.filter((obj) => obj.key.match(/\s*Passage\s*Date\s*/i)).map(cleanDate);
+            date = entry.entry_data.filter((obj) => obj.key.match(/^\s*Passage\s*Date\s*$/i)).map(cleanDate);
             if (date.length > 1) {
                 date = new Date(date.reduce(function (a, b) {
                     return Math.max(new Date(a), new Date(b));

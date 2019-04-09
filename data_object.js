@@ -3,6 +3,7 @@
     'use strict';
 
     const ID = "_id";
+    const ALLOWPOST = false;
     const SPEACH_SPLIT = new RegExp('[^A-Za-z0-9]+', 'i');
     const URL_BASE = 'http://db.kinomecore.com/2.0.0/passages/passages/';
 
@@ -176,34 +177,46 @@
     const set = (function () {
         return function (changer, getter) {
             const postData = function (id, data_obj) {
-                return db_connect(URL_BASE + id, data_obj, "PATCH")
-                    .then(function (resp) {
-                        return resp.data[0];
+
+                if (ALLOWPOST) {
+                    return db_connect(URL_BASE + id, data_obj, "PATCH")
+                        .then(function (resp) {
+                            return resp.data[0];
+                        });
+                }
+
+                // way of mimicing the post below without posting
+                console.log(URL_BASE + id, data_obj);
+                let data_in = getter(id);
+                let parameters = Object.keys(data_obj);
+
+                parameters.forEach(function (parameter) {
+                    let miniParams = parameter.split(/\./);
+                    let setPoint = data_in;
+                    let finalKey = miniParams.pop(); // empties 'value'
+                    miniParams.forEach(function (key) {
+                        setPoint = setPoint[key];
                     });
+                    setPoint[finalKey] = data_obj[parameter];
+                });
 
-                // way of mimicing the post below
-                //console.log(URL_BASE + id, data_obj);
-                // let data_in = getter(id);
-                // let parameters = Object.keys(data_obj);
+                console.log(data_in);
 
-                // parameters.forEach(function (parameter) {
-                //     let miniParams = parameter.split(/\./);
-                //     let setPoint = data_in;
-                //     miniParams.pop(); // empties 'value'
-                //     miniParams.forEach(function (key) {
-                //         setPoint = setPoint[key];
-                //     });
-                //     setPoint.value = data_obj[parameter];
-                // });
-
-                //return Promise.resolve(data_in);
+                return Promise.resolve(data_in);
             };
 
             const combine_and_post = function (updates) {
                 let by_id = {};
+                console.log(updates);
                 updates.forEach(function (update) {
                     by_id[update.id] = by_id[update.id] || {};
-                    by_id[update.id][update.key + '.value'] = update.value;
+
+                    // if this is a new key/value pair
+                    if (typeof update.value === 'object') {
+                        by_id[update.id][update.key] = update.value;
+                    } else {
+                        by_id[update.id][update.key + '.value'] = update.value;
+                    }
                 });
 
                 return Object.keys(by_id).map((id) => postData(id, by_id[id]));
