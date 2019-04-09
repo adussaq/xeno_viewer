@@ -3,7 +3,7 @@
     'use strict';
 
     const ID = "_id";
-    const ALLOWPOST = false;
+    const ALLOWPOST = true;
     const SPEACH_SPLIT = new RegExp('[^A-Za-z0-9]+', 'i');
     const URL_BASE = 'http://db.kinomecore.com/2.0.0/passages/passages/';
 
