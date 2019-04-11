@@ -22,6 +22,8 @@
     let PERMS; // set a global variable for dealing with perms for simplicity
                 // this simply serves to make the UI more friendly.
 
+    let USER; // set a global object to the user's name, also for simplicity
+
     //functions that have to be delared without const
     let getModal;
 
@@ -67,6 +69,7 @@
     };
 
     const editDropDown = function (drop_down) {
+        let $drop_append, label_class, hold_class;
 
         /*
         Drop down options:
@@ -77,18 +80,31 @@
             change: function to be called when data is changed
         */
 
+        if (!drop_down.row) {
+            hold_class = "from-group col-" + drop_down.width;
+            label_class = "";
+            $drop_append = $('<div>');
+        } else {
+            hold_class = "form-group row";
+            label_class = "col-form-label col-sm-" + drop_down.width;
+            $drop_append = $('<div>', {
+                class: "col-sm-" + (12 - drop_down.width)
+            });
+        }
+
         const rand = random();
 
         let $element = $('<div>', {
-                class: "from-group col-" + drop_down.width
+                class: hold_class
             }).append($('<label>', {
                 for: 'select-header-' + rand,
-                text: drop_down.label
+                text: drop_down.label,
+                class: label_class
             })),
             $select = $('<select>', {
                 class: "form-control",
                 id: 'select-header-' + rand
-            }),
+            }).appendTo($drop_append),
             $first = $('<option>', { // basic choice
                 disabled: 'disabled',
                 selected: 'selected',
@@ -111,7 +127,11 @@
         });
 
         // add the select to the returned element
-        $element.append($select);
+        if (drop_down.row) {
+            $element.append($drop_append);
+        } else {
+            $element.append($select);
+        }
 
         //set function for on change
         $select.change(function (evt) {
@@ -131,7 +151,7 @@
                 func: function called when edits take place,
                 id: id for entry,
                 key: key for patching object,
-                rand_wait: random wait function
+                rand_wait: random wait number
             }
         */
 
@@ -150,6 +170,7 @@
                 .append($('<input>', {
                     class: 'form-control',
                     id: 'list-item-' + rand,
+                    disabled: parts.disabled || false,
                     value: parts.value
                 }).on('keyup', waitForFinalEvent(function (evt) {
                     parts.func({
@@ -296,6 +317,7 @@
                                 data: opts.special_list,
                                 key: 'push:entry_data',
                                 change: function (select) {
+                                    $selectanEntry.empty();
                                     if (select.value === 'Other') {
                                         $selectanEntry.append(createEntryWithLabel({
                                             label: "New Key",
@@ -318,14 +340,21 @@
                                             key: 'entry_data.' + entry.entry_data.length,
                                             rand_wait: rand_wait
                                         }));
+                                    } else {
+                                        set_pair('key', select.value);
+                                        $selectanEntry.append(createEntryWithLabel({
+                                            label: select.value,
+                                            value: "",
+                                            func: function (d) {
+                                                d.value = set_pair('value', d.value);
+                                                opts.edit_func(d);
+                                            },
+                                            id: entry[ID],
+                                            key: 'entry_data.' + entry.entry_data.length,
+                                            rand_wait: rand_wait
+                                        }));
+
                                     }
-                                    console.log('on change', {
-                                        id: entry[ID],
-                                        key: select.key,
-                                        value: select.value,
-                                        origin: '',
-                                        temp: select
-                                    });
                                 }
                             }));
 
@@ -497,7 +526,9 @@
                         .map((key1) => Object.keys(updates[key1])
                             .map((key2) => updates[key1][key2]))
                         .flat()
-                        .filter((obj) => obj.value !== obj.origin)
+                        .filter((obj) => obj.value !== obj.origin),
+                    "passages",
+                    "passages"
                 )
                     .then(wait(750))
                     .catch(create_alert)
@@ -664,12 +695,161 @@
         return aModal;
     };
 
+    const newEntryModal = function (obj, data, clear_it) {
+        let modal = getModal(); // title,body,foot,show,hide
+        let random_wait = random();
+        let $modal_body = $('<div>');
+        let $submit_btn;
+        modal.title("Create New Node");
+
+        let post_object = JSON.parse(JSON.stringify(obj));
+        post_object.entry_metadata = {
+            user: USER.replace(/@uab\.edu/, "")
+        };
+        post_object.entry_data = {
+        };
+        let extras = [];
+
+        const experiment_change = function ($area) {
+            return function (kv) {
+                $submit_btn.prop("disabled", false);
+                $submit_btn.prop("style", "");
+                $area.empty();
+                if (kv.value === "other") {
+                    $area.append($('<input>', {
+                        class: "form-control",
+                        style: "margin-top: 10px;"
+                    }).on('keyup', waitForFinalEvent(function (evt) {
+                        post_object.entry_data["Old Exp#"] = evt.target.value;
+                    }, 500, random_wait)));
+                } else {
+                    post_object.entry_data["Old Exp#"] = kv.value;
+                }
+            };
+
+        };
+
+        // Add known keys
+        Object.keys(obj).forEach(function (key) {
+            if (typeof obj[key] === "string") {
+                createEntryWithLabel({
+                    label: key,
+                    key: key,
+                    value: obj[key],
+                    rand_wait: random_wait,
+                    disabled: key.match(/^(pdx_id|origin_id)$/),
+                    func: function (change) {
+                        post_object[change.key] = change.value;
+                    }
+                }).appendTo($modal_body);
+            } else if (typeof obj[key] === "object" && Array.isArray(obj[key])) {
+                obj[key].forEach(function (keyval) {
+                    if (typeof keyval.value === "string") {
+                        if (keyval.value) {
+                            post_object.entry_data[keyval.key] = keyval.value;
+                        }
+                        createEntryWithLabel({
+                            label: keyval.key,
+                            key: keyval.key,
+                            value: keyval.value,
+                            rand_wait: random_wait,
+                            func: function (change) {
+                                post_object.entry_data[change.key] = change.value;
+                            }
+                        }).appendTo($modal_body);
+                    } else if (typeof keyval.value === "object" && Array.isArray(keyval.value)) {
+                        let $other = $('<div>', {
+                            class: 'col-sm-9 offset-sm-3'
+                        });
+                        editDropDown({
+                            label: keyval.key,
+                            row: true,
+                            width: 3,
+                            data: keyval.value.map((x) => ({label: x})),
+                            key: 'entry_data.' + keyval.key,
+                            change: experiment_change($other)
+                        }).append($other).appendTo($modal_body);
+                    }
+                });
+            }
+        });
+
+        //Add space for more entries
+        let $more = $('<div>');
+        $('<button>', {
+            class: 'btn btn-primary',
+            text: 'Other Field',
+            click: function (evt) {
+                let key_val = {a: {}};
+                extras.push(key_val.a);
+                evt.preventDefault();
+                createEntryWithLabel({
+                    label: "Key",
+                    key: "",
+                    value: "",
+                    rand_wait: random_wait,
+                    func: function (change) {
+                        key_val.a.key = change.value;
+                    }
+                }).appendTo($more);
+
+                createEntryWithLabel({
+                    label: "Value",
+                    key: "",
+                    value: "",
+                    rand_wait: random_wait,
+                    func: function (change) {
+                        key_val.a.value = change.value;
+                    }
+                }).appendTo($more);
+            }
+        }).appendTo($modal_body);
+        $more.appendTo($modal_body);
+
+        //set up submit button
+        $submit_btn = $('<button>', {
+            class: "btn-primary btn",
+            text: "Submit",
+            click: function (evt) {
+                evt.preventDefault();
+                post_object.entry_metadata.date = new Date();
+                post_object.entry_data = Object.keys(post_object.entry_data)
+                    .map((key) => ({key: key, value: post_object.entry_data[key]}))
+                    .concat(extras);
+                data.add(post_object, "passages", "passages").then(wait(500)).then(function (a) {
+                    console.log(a);
+                    modal.hide();
+                    clear_it();
+                });
+            },
+            disabled: "disabled",
+            type: "button",
+            style: "pointer-events: none;"
+        });
+
+        modal.body($modal_body);
+        modal.foot($('<span>', {
+            class: "d-inline-block",
+            tabindex: "0",
+            "data-toggle": "tooltip",
+            "data-placement": "left",
+            title: "Old Exp # is required"
+        }).append($submit_btn).tooltip());
+
+        modal.show();
+    };
+
     const build_page_components = function (data, get_list_func) {
-        return function (filter) {
+        let starter;
+        starter = function (filter) {
 
             //reset needed updates and data holder
             data.clearUpdates();
             $data_body.empty();
+
+            let redoer = function () {
+                starter(filter);
+            };
 
             const ids = get_list_func(filter);
             const build_data = data.expandIDs(ids);
@@ -712,11 +892,48 @@
 
                 const passageIDs = by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX\ Passage\ Info$/i));
                 if (passageIDs.length) {
-                    console.log(passageIDs);
                     let id = 'figure-' + random();
 
                     // add title
-                    $("<p>", {class: "h4 row", text: "Passage Timeline"}).appendTo($data_body);
+                    let header = $("<p>", {class: "h4 row", text: "Passage Timeline"}).appendTo($data_body);
+
+                    // add button for new passage node
+                    header.append(data.build(passageIDs, function (entries) {
+                        let entry = entries[0];
+                        return $('<button>', {
+                            class: "btn btn-primary",
+                            style: "margin-left: 20px;",
+                            text: "Add Node",
+                            click: function (evt) {
+                                evt.preventDefault();
+                                newEntryModal({
+                                    pdx_id: entry.pdx_id,
+                                    origin_id: entry.origin_id,
+                                    model_environment: entry.model_environment,
+                                    historical: "no",
+                                    description: entry.description,
+                                    entry_name: entry.entry_name,
+                                    entry_data: [{
+                                        key: "Old Exp#",
+                                        value: entries
+                                            .map((x) => x.entry_data)
+                                            .flat()
+                                            .filter((x) => x.key === "New Exp#")
+                                            .map((x) => x.value)
+                                            .sort(function (a, b) {
+                                                a = a.replace(/[^\d\-]/g, "").replace(/-/g, ".") * 1;
+                                                b = b.replace(/[^\d\-]/g, "").replace(/-/g, ".") * 1;
+                                                return a - b;
+                                            })
+                                            .concat(["none", "other"])
+                                    }]
+                                        .concat(SPECIAL_KEYS.passages
+                                            .filter((x) => x !== "Old Exp#")
+                                            .map((x) => ({key: x, value: ""})))
+                                }, data, redoer);
+                            }
+                        });
+                    }));
 
                     // add place for the passage figure and tables
                     let $info_viewer = $('<div>', {class: 'col-12'});
@@ -775,6 +992,9 @@
                 });
             });
         };
+
+        return starter;
+
     };
 
 
@@ -931,6 +1151,7 @@
                 // do not see the editable interface
 
             PERMS = permissions;
+            USER = permissions.email;
 
             const data = global.expandData(data_in); //build out the new data object
             const drops = [{ // info to build the drop down menus

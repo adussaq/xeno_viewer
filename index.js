@@ -22,6 +22,7 @@
         //check if user is already logged in
         fetchJSON('http://db.kinomecore.com/auth/passages/passages').then(function (status) {
             auth1 = status.read;
+            auth3.email = status.email;
             auth3.passages = status;
             return fetchJSON('http://db.kinomecore.com/auth/xenoline_annotations/v1');
         }).then(function (status) {

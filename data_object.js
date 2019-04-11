@@ -5,7 +5,8 @@
     const ID = "_id";
     const ALLOWPOST = true;
     const SPEACH_SPLIT = new RegExp('[^A-Za-z0-9]+', 'i');
-    const URL_BASE = 'http://db.kinomecore.com/2.0.0/passages/passages/';
+    const URL_BASE = 'http://db.kinomecore.com/2.0.0/';
+    const JOIN_STR = '|&|&|&|&|';
 
     let deepCopy;
     deepCopy = function (obj) {
@@ -96,7 +97,7 @@
             }));
             let thisInd = saver.group.length;
             saver.group.push({
-                id: ids.join('|&|&|&|&|'),
+                id: ids.join(JOIN_STR),
                 func: function () {
                     let $newElem = array_build(ids, builder);
                     $thisElem.replaceWith($newElem);
@@ -176,17 +177,17 @@
 
     const set = (function () {
         return function (changer, getter) {
-            const postData = function (id, data_obj) {
+            const postData = function (id, db, col, data_obj) {
 
                 if (ALLOWPOST) {
-                    return db_connect(URL_BASE + id, data_obj, "PATCH")
+                    return db_connect(URL_BASE + db + "/" + col + "/" + id, data_obj, "PATCH")
                         .then(function (resp) {
                             return resp.data[0];
                         });
                 }
 
                 // way of mimicing the post below without posting
-                console.log(URL_BASE + id, data_obj);
+                console.log(URL_BASE + db + "/" + col + "/" + id, data_obj);
                 let data_in = getter(id);
                 let parameters = Object.keys(data_obj);
 
@@ -205,7 +206,7 @@
                 return Promise.resolve(data_in);
             };
 
-            const combine_and_post = function (updates) {
+            const combine_and_post = function (updates, db, col) {
                 let by_id = {};
                 console.log(updates);
                 updates.forEach(function (update) {
@@ -219,12 +220,12 @@
                     }
                 });
 
-                return Object.keys(by_id).map((id) => postData(id, by_id[id]));
+                return Object.keys(by_id).map((id) => postData(id, db, col, by_id[id]));
             };
 
-            return function (update_arr) {
+            return function (update_arr, db, col) {
                 //console.log(update_arr);
-                return Promise.all(combine_and_post(update_arr)).then(function (objs) {
+                return Promise.all(combine_and_post(update_arr, db, col)).then(function (objs) {
                     return objs.map(function (obj) {
                         //update global object with return
                         getter.set(obj[ID], obj);
@@ -245,6 +246,36 @@
                         //return id
                         return obj[ID];
                     });
+                });
+            };
+        };
+    }());
+
+    const add = (function () {
+        return function (getter, resetFunc) {
+            return function (obj, db, collection) {
+                let objO = deepCopy(obj);
+                let prom;
+                if (ALLOWPOST) {
+                    prom = db_connect(URL_BASE + db + "/" + collection, obj, "POST").then(function (ret) {
+                        if (!ret.success) {
+                            throw "Failed to Post";
+                        }
+                        objO[ID] = ret.data[0].id;
+                        return objO;
+                    });
+                } else {
+                    console.log(URL_BASE + db + "/" + collection);
+                    objO[ID] = "fake" + Math.random();
+                    prom = Promise.resolve(objO);
+                }
+
+                return prom.then(function (obj_final) {
+                    //update data status
+                    getter.set(obj_final[ID], obj_final);
+                    resetFunc(obj_final);
+
+                    return obj_final;
                 });
             };
         };
@@ -322,16 +353,26 @@
             getter = getById(data);
             data_methods_obj.build = build(getter, changer);
         }
-        data_methods_obj.list = getUnique(data);
-        data_methods_obj.filter = getIdList(data);
-        data_methods_obj.clearUpdates = function () {
-            changer = {ind: {}, group: {}};
-        };
-        dictionary = build_dictionary(data);
-        data_methods_obj.search = search(dictionary);
-        data_methods_obj.set = set(changer, getter);
+        let buildIt;
 
+        buildIt = function () {
+            data_methods_obj.list = getUnique(data);
+            data_methods_obj.filter = getIdList(data);
+            dictionary = build_dictionary(data);
+            data_methods_obj.search = search(dictionary);
+        };
+
+        buildIt();
+
+        data_methods_obj.clearUpdates = function () {
+            changer = {ind: {}, group: []};
+        };
+        data_methods_obj.set = set(changer, getter);
         data_methods_obj.expandIDs = getByIds(getter);
+        data_methods_obj.add = add(getter, function (item) {
+            data.push(item);
+            buildIt();
+        });
 
         //return object with methods
         return data_methods_obj;
