@@ -262,7 +262,7 @@
                         return objO;
                     });
                 } else {
-                    console.log(URL_BASE + db + "/" + collection);
+                    console.log(URL_BASE + db + "/" + collection, objO);
                     objO[ID] = "fake" + Math.random();
                     prom = Promise.resolve(objO);
                 }

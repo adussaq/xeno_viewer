@@ -695,6 +695,95 @@
         return aModal;
     };
 
+    const summarizeAvaliable = function (ids, data, $elem) {
+        //add header
+        $elem.append($('<p>', {class: "h4 row", text: "Sample Availability"}));
+        data.build(ids, function (entries) {
+            //grab only entries that have samples frozen
+            const with_some = entries.filter(function (entry) {
+                return entry.entry_data.map(function (kv) {
+                    let ret = 0;
+                    if (kv.key.match(/#\ of\ (Fixed\ Tissues|OCT\ Cassettes|Snap-Frozen\ Vials|Cultured\ Flasks|Cryo-Frozen\ Vials)/)) {
+                        ret += kv.value * 1;
+                    }
+                    if (isNaN(ret)) {
+                        return 1;
+                    }
+                    return ret;
+                }).reduce((a, b) => a + b);
+            });
+
+            if (!with_some.length) {
+                return $('<p>', {class: "row", text: "No Stored Tissue Found."});
+            }
+            let $ret = $('<p>', {class: "row"});
+            let counts = {
+                "# of Fixed Tissues": {count: 0, passages: {}, exp_ids: {}},
+                "# of OCT Cassettes": {count: 0, passages: {}, exp_ids: {}},
+                "# of Snap-Frozen Vials": {count: 0, passages: {}, exp_ids: {}},
+                "# of Cultured Flasks": {count: 0, passages: {}, exp_ids: {}},
+                "# of Cryo-Frozen Vials": {count: 0, passages: {}, exp_ids: {}}
+            };
+
+            with_some.forEach(function (entry) {
+                // get important information
+                let passage, exp_id, passage_date;
+                entry.entry_data.forEach(function (kv) {
+                    if (kv.key === "Passage#") {
+                        passage = kv.value;
+                    }
+                    if (kv.key === "New Exp#") {
+                        exp_id = kv.value;
+                    }
+                    if (kv.key === "Passage Date") {
+                        passage_date = kv.value;
+                    }
+                });
+
+                //create counts
+                entry.entry_data.forEach(function (kv) {
+                    if (counts.hasOwnProperty(kv.key)) {
+                        let num = kv.value * 1;
+                        if (!isNaN(num)) {
+                            counts[kv.key].count += num;
+                            counts[kv.key].passages[passage] = counts[kv.key].passages[passage] || 0;
+                            counts[kv.key].passages[passage] += num;
+                        }
+                        counts[kv.key][exp_id] = num;
+                    }
+                });
+            });
+
+            //Add them to the return display
+            Object.keys(counts).forEach(function (category) {
+                let $byPassage = $('<p>', {
+                    class: "col-12",
+                    text: Object.keys(counts[category].passages)
+                        .map(function (pnum) {
+                            return "passage " + pnum + ": " + counts[category].passages[pnum];
+                        }).join('; ')
+                });
+                $byPassage.toggle();
+                let $more = $('<a>', {
+                    href: "#",
+                    text: " <more>",
+                    click: function () {
+                        $byPassage.toggle();
+                    }
+                });
+                if (counts[category].count) {
+                    $ret.append($('<div>', {
+                        class: 'col-12',
+                        html: category + ": " + counts[category].count
+                    }).append($more)).append($byPassage);
+                }
+            });
+
+            return $ret;
+        }).appendTo($elem);
+
+    };
+
     const newEntryModal = function (obj, data, clear_it) {
         let modal = getModal(); // title,body,foot,show,hide
         let random_wait = random();
@@ -879,8 +968,7 @@
 
                 const entries = {
                     nanostring: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ Nanostring\ naming\ and\ model\ information$/i)),
-                    omics: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i)),
-                    passages: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i)),
+                    omics: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i))
                 };
                 if (entries.nanostring.length || entries.omics.length) {
                     // add title
@@ -896,6 +984,9 @@
 
                 const passageIDs = by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX\ Passage\ Info$/i));
                 if (passageIDs.length) {
+
+                    summarizeAvaliable(passageIDs, data, $data_body);
+
                     let id = 'figure-' + random();
 
                     // add title
@@ -998,7 +1089,6 @@
         };
 
         return starter;
-
     };
 
 
