@@ -904,7 +904,8 @@
                 post_object.entry_metadata.date = new Date();
                 post_object.entry_data = Object.keys(post_object.entry_data)
                     .map((key) => ({key: key, value: post_object.entry_data[key]}))
-                    .concat(extras);
+                    .concat(extras)
+                    .filter((kv) => kv.hasOwnProperty("key") && kv.hasOwnProperty("value") && kv.key !== undefined && kv.value !== undefined);
                 data.add(post_object, "passages", "passages")
                     .then(wait(500))
                     .catch(create_alert)
