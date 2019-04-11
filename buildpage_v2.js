@@ -737,7 +737,7 @@
                     key: key,
                     value: obj[key],
                     rand_wait: random_wait,
-                    disabled: key.match(/^(pdx_id|origin_id)$/),
+                    disabled: key.match(/^(pdx_id|origin_id|entry_name)$/),
                     func: function (change) {
                         post_object[change.key] = change.value;
                     }
@@ -879,7 +879,8 @@
 
                 const entries = {
                     nanostring: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ Nanostring\ naming\ and\ model\ information$/i)),
-                    omics: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i))
+                    omics: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i)),
+                    passages: by_pdx_id.filter((entry) => entry.entry_name.match(/^PDX_ID\ to\ old\ PDX_ID_OldKinomic\/Affy\/Illumina\ ID\'s$/i)),
                 };
                 if (entries.nanostring.length || entries.omics.length) {
                     // add title
