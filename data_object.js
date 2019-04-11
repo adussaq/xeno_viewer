@@ -201,14 +201,11 @@
                     setPoint[finalKey] = data_obj[parameter];
                 });
 
-                console.log(data_in);
-
                 return Promise.resolve(data_in);
             };
 
             const combine_and_post = function (updates, db, col) {
                 let by_id = {};
-                console.log(updates);
                 updates.forEach(function (update) {
                     by_id[update.id] = by_id[update.id] || {};
 

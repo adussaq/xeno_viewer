@@ -520,7 +520,7 @@
             click: function (evt) {
                 evt.preventDefault();
 
-                console.log(updates);
+                // console.log(updates);
                 data.set(
                     Object.keys(updates)
                         .map((key1) => Object.keys(updates[key1])
@@ -816,11 +816,14 @@
                 post_object.entry_data = Object.keys(post_object.entry_data)
                     .map((key) => ({key: key, value: post_object.entry_data[key]}))
                     .concat(extras);
-                data.add(post_object, "passages", "passages").then(wait(500)).then(function (a) {
-                    console.log(a);
-                    modal.hide();
-                    clear_it();
-                });
+                data.add(post_object, "passages", "passages")
+                    .then(wait(500))
+                    .catch(create_alert)
+                    .then(function () {
+                        // console.log(a);
+                        modal.hide();
+                        clear_it();
+                    });
             },
             disabled: "disabled",
             type: "button",
@@ -854,7 +857,7 @@
             const ids = get_list_func(filter);
             const build_data = data.expandIDs(ids);
 
-            console.log('search results?', ids);
+            console.log('Selected IDS:', ids);
 
             //break up by pdx_id
             build_data.list('pdx_id').forEach(function (pdx_id) {
