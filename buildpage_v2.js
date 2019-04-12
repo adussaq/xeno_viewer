@@ -703,7 +703,7 @@
             const with_some = entries.filter(function (entry) {
                 return entry.entry_data.map(function (kv) {
                     let ret = 0;
-                    if (kv.key.match(/#\ of\ (Fixed\ Tissues|OCT\ Cassettes|Snap-Frozen\ Vials|Cultured\ Flasks|Cryo-Frozen\ Vials)/)) {
+                    if (kv.key.match(/#\ of\ (Fixed\ Tissues|Snap-Frozen\ Vials|Cryo-Frozen\ Vials)/)) {
                         ret += kv.value * 1;
                     }
                     if (isNaN(ret)) {
@@ -719,9 +719,9 @@
             let $ret = $('<p>', {class: "row"});
             let counts = {
                 "# of Fixed Tissues": {count: 0, passages: {}, exp_ids: {}},
-                "# of OCT Cassettes": {count: 0, passages: {}, exp_ids: {}},
+                // "# of OCT Cassettes": {count: 0, passages: {}, exp_ids: {}},
                 "# of Snap-Frozen Vials": {count: 0, passages: {}, exp_ids: {}},
-                "# of Cultured Flasks": {count: 0, passages: {}, exp_ids: {}},
+                // "# of Cultured Flasks": {count: 0, passages: {}, exp_ids: {}},
                 "# of Cryo-Frozen Vials": {count: 0, passages: {}, exp_ids: {}}
             };
 
@@ -749,25 +749,45 @@
                             counts[kv.key].passages[passage] = counts[kv.key].passages[passage] || 0;
                             counts[kv.key].passages[passage] += num;
                         }
-                        counts[kv.key][exp_id] = num;
+                        counts[kv.key].info = counts[kv.key].info || [];
+                        counts[kv.key].info.push({
+                            exp_id: exp_id,
+                            passage: passage,
+                            count: kv.value,
+                            date: passage_date
+                        });
                     }
                 });
             });
 
             //Add them to the return display
             Object.keys(counts).forEach(function (category) {
-                let $byPassage = $('<p>', {
-                    class: "col-12",
-                    text: Object.keys(counts[category].passages)
-                        .map(function (pnum) {
-                            return "passage " + pnum + ": " + counts[category].passages[pnum];
-                        }).join('; ')
-                });
+                let $byPassage = $('<p>', {class: "col-12"})
+                    .append($('<div>', {class: 'row'})
+                        .append(Object.keys(counts[category].passages)
+                            .sort(function (a, b) {
+                                let aN = a.replace(/\D+/g, "") * 1;
+                                let bN = b.replace(/\D+/g, "") * 1;
+                                return aN - bN;
+                            })
+                            .map(function (pnum) {
+                                let $details = $('<p>', {html: counts[category].info.filter((a) => pnum === a.passage).map((a) => "Exp ID: " + a.exp_id + ": " + a.count + " (" + a.date + ")").join('<br />')});
+                                $details.toggle();
+                                return $('<div>', {
+                                    class: "col-lg-3 col-4"
+                                }).append($('<span>', {
+                                    text: "Passage " + pnum + ": " + counts[category].passages[pnum]
+                                }).append($('<a>', {href: "#", text: " (details)", click: function (evt) {
+                                    evt.preventDefault();
+                                    $details.toggle();
+                                }}))).append($details);
+                            })));
                 $byPassage.toggle();
                 let $more = $('<a>', {
                     href: "#",
                     text: " <more>",
-                    click: function () {
+                    click: function (evt) {
+                        evt.preventDefault();
                         $byPassage.toggle();
                     }
                 });
