@@ -775,8 +775,8 @@
                                     html: counts[category].info
                                         .filter((a) => pnum === a.passage)
                                         .sort(function (a, b) {
-                                            let Da = new Date(a);
-                                            let Db = new Date(b);
+                                            let Da = new Date(a.date);
+                                            let Db = new Date(b.date);
 
                                             return Db - Da;
                                         })
