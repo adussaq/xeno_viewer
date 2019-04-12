@@ -771,7 +771,18 @@
                                 return aN - bN;
                             })
                             .map(function (pnum) {
-                                let $details = $('<p>', {html: counts[category].info.filter((a) => pnum === a.passage).map((a) => "Exp ID: " + a.exp_id + ": " + a.count + " (" + a.date + ")").join('<br />')});
+                                let $details = $('<p>', {
+                                    html: counts[category].info
+                                        .filter((a) => pnum === a.passage)
+                                        .sort(function (a, b) {
+                                            let Da = new Date(a);
+                                            let Db = new Date(b);
+
+                                            return Da - Db;
+                                        })
+                                        .map((a) => "Exp ID: " + a.exp_id + ": " + a.count + " (" + a.date + ")")
+                                        .join('<br />')
+                                });
                                 $details.toggle();
                                 return $('<div>', {
                                     class: "col-lg-3 col-4"
