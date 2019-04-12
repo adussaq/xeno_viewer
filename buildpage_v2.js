@@ -778,7 +778,7 @@
                                             let Da = new Date(a);
                                             let Db = new Date(b);
 
-                                            return Da - Db;
+                                            return Db - Da;
                                         })
                                         .map((a) => "Exp ID: " + a.exp_id + ": " + a.count + " (" + a.date + ")")
                                         .join('<br />')
